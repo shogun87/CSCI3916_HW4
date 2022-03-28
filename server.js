@@ -150,7 +150,38 @@ router.route('/movies')
                 return res.status(401).json({success: false, message: "Failed to get Movies from database."})
             }
             else{
-                return res.status(200).json(movies);
+                // Check if user wanted movie reviews
+                if(req.query.reviews === "true") {
+                    // Aggregate the reviews into the movie data
+                    Movie.aggregate([
+                        {
+                            $lookup:
+                                {
+                                    from: "reviews",   // From db on mongodb
+                                    localField: "title",  // Local field from movies schema
+                                    foreignField: "movieId", // Foreign field is from reviews schema
+                                    as: "movie_review"   // This is what the name of the new aggregated field will be
+                                }
+                        },
+                        {
+                            // Add a new field on the response, avg_rating that will have the avg rating for reviews on that movie
+                            $addFields:
+                            {
+                                avg_rating: {$avg: "$movie_review.rating"}
+                            }
+                        }
+                    ]).exec(function(err, movie_review) { // Need to execute the aggregation
+                        if(err){
+                            res.status(500).json({success: false, message: "Failed to aggregate reviews"});
+                        }
+                        else {
+                            return res.status(200).json(movie_review)
+                        }
+                    })
+                }
+                else {
+                    return res.status(200).json(movies);
+                }
             }
         })
     })
@@ -205,6 +236,19 @@ router.route('/movies')
     // });
 
 router.route("/reviews")
+    // GET functionality
+    .get(authJwtController.isAuthenticated, function(req, res) {
+        // Find all reviews and send them back to user
+        Review.find({}, function(err, reviews) {
+            if(err){
+                return res.status(401).json({success: false, message: "Failed to get Reviews from database."})
+            }
+            else{
+                return res.status(200).json(reviews);
+            }
+        })
+    })
+
     // POST functionality
     .post(authJwtController.isAuthenticated, function(req, res) {
         // Make sure the user input all required fields for review
@@ -213,7 +257,7 @@ router.route("/reviews")
         } else { // Else add review to database
             var review = new Review();
             review.movieId = req.body.movieId;
-            review.reviewerId = req.body.reviewerId;
+            review.reviewerId = req.user.username;
             review.review = req.body.review;
             review.rating = req.body.rating;
         }
@@ -221,10 +265,10 @@ router.route("/reviews")
         // Save review to database
         review.save(function(err) {
             if(err) {
-                return res.status(409).json({success: false, message: ""})
+                return res.status(409).json({success: false, message: "Review wasn't saved to database"})
             }
         })
-    })
+    });
 
 
 app.use('/', router);
