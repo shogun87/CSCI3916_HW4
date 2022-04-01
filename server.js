@@ -304,6 +304,9 @@ router.route("/reviews")
             if(err) {
                 return res.status(409).json({success: false, message: "Review wasn't saved to database"})
             }
+            else {
+                return res.status(200).json({success: true, message: "Successfully added review to database."})
+            }
         })
     });
 
