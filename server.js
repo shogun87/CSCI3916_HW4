@@ -291,23 +291,35 @@ router.route("/reviews")
         // Make sure the user input all required fields for review
         if(!req.body.movieId || !req.body.review || !req.body.rating){
             res.status(400).json({success: false, message: "Please include 'Movie title', 'Your review', and 'Your rating'"})
-        } else { // Else add review to database
-            var review = new Review();
-            review.movieId = req.body.movieId;
-            review.reviewerId = req.user.username;
-            review.review = req.body.review;
-            review.rating = req.body.rating;
-        }
+        } else {
+            // Check if movie is in the database before adding review
+            Review.findOne({ movieId: req.body.movieId }, function(err, movie) {
+                if(err){
+                    res.send(err);
+                }
+                else if(!movie) {
+                    res.status(400).json({success: false, message: "Movie not found in database." })
+                }
+                else {
+                    // Else add review to database
+                    var review = new Review();
+                    review.movieId = req.body.movieId;
+                    review.reviewerId = req.user.username;
+                    review.review = req.body.review;
+                    review.rating = req.body.rating;
 
-        // Save review to database
-        review.save(function(err) {
-            if(err) {
-                return res.status(409).json({success: false, message: "Review wasn't saved to database"})
-            }
-            else {
-                return res.status(200).json({success: true, message: "Successfully added review to database."})
-            }
-        })
+                    // Save review to database
+                    review.save(function(err) {
+                        if(err) {
+                            return res.status(409).json({success: false, message: "Review wasn't saved to database"})
+                        }
+                        else {
+                            return res.status(200).json({success: true, message: "Successfully added review to database."})
+                        }
+                    })
+                }
+            })
+        }
     });
 
 
