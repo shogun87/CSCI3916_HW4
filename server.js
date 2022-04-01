@@ -108,7 +108,44 @@ router.route('/movies/*')
                 res.status(400).json({success: false, message: "Movie not found in database." })
             }
             else{
-                res.status(200).json(movie)
+                // Check if user wants reviews or not
+                if(req.query.reviews === "true") {
+                    // Aggregate the reviews into the movie data
+                    Movie.aggregate([
+                        {
+                            $match:
+                                {
+                                    title: req.params[0]
+                                },
+                        },
+                        {
+                            $lookup:
+                                {
+                                    from: "reviews",   // From db on mongodb
+                                    localField: "title",  // Local field from movies schema
+                                    foreignField: "movieId", // Foreign field is from reviews schema
+                                    as: "movie_review"   // This is what the name of the new aggregated field will be
+                                }
+                        },
+                        {
+                            // Add a new field on the response, avg_rating that will have the avg rating for reviews on that movie
+                            $addFields:
+                                {
+                                    avg_rating: {$avg: "$movie_review.rating"}
+                                }
+                        }
+                    ]).exec(function(err, movie_review) { // Need to execute the aggregation
+                        if(err){
+                            res.status(500).json({success: false, message: "Failed to aggregate reviews"});
+                        }
+                        else {
+                            return res.status(200).json(movie_review)
+                        }
+                    })
+                }
+                else {
+                    res.status(200).json(movie)
+                }
             }
         })
     })
