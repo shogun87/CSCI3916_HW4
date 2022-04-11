@@ -207,7 +207,7 @@ router.route('/movies')
                                 avg_rating: {$avg: "$movie_review.rating"}
                             }
                         }
-                    ]).sort({avg_rating: 1}).exec(function(err, movie_review) { // Need to execute the aggregation
+                    ]).sort({avg_rating: -1}).exec(function(err, movie_review) { // Need to execute the aggregation
                         if(err){
                             res.status(500).json({success: false, message: "Failed to aggregate reviews"});
                         }
